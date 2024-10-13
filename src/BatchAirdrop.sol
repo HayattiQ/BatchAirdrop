@@ -6,11 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract Distributor is Ownable(msg.sender) {
+contract BatchAirdrop is Ownable(msg.sender) {
     using SafeERC20 for IERC20;
 
     IERC20 public token;
-    uint256 public batchSize = 100;
+    uint256 public batchSize = 120;
     uint public totalAmount = 0;
 
     struct Distribution {
@@ -39,7 +39,7 @@ contract Distributor is Ownable(msg.sender) {
         emit Deposited(msg.sender, _amount);
     }
 
-    function deleteDistribution() external onlyOwner {
+    function resetDistribution() external onlyOwner {
         delete distributions;
         currentDistributionIndex = 0;
         totalAmount = 0;
@@ -92,7 +92,7 @@ contract Distributor is Ownable(msg.sender) {
         return token.balanceOf(address(this));
     }
 
-        function withdrawToken(
+    function withdrawToken(
         IERC20 _token,
         uint256 _amount,
         address _to
