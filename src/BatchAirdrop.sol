@@ -13,6 +13,8 @@ contract BatchAirdrop is AccessControl  {
     uint256 public batchSize = 120;
     uint public totalAmount = 0;
     bytes32 public constant DEPOSITER_ROLE = keccak256("DEPOSITER_ROLE");
+    bytes32 public constant SET_DISTRIBUTION_ROLE = keccak256("SET_DISTRIBUTION_ROLE");
+    bytes32 public constant DISTRIBUTE_ROLE = keccak256("DISTRIBUTE_ROLE");
 
 
     struct Distribution {
@@ -31,14 +33,16 @@ contract BatchAirdrop is AccessControl  {
         token = IERC20(_token);
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(DEPOSITER_ROLE, _msgSender());
-        _grantRole(DEPOSITER_ROLE, _msgSender());
+        _grantRole(DISTRIBUTE_ROLE, _msgSender());
+        _grantRole(SET_DISTRIBUTION_ROLE, _msgSender());
+
     }
 
     function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         token = IERC20(_token);
     }
 
-    function deposit(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function deposit(uint256 _amount) external onlyRole(DEPOSITER_ROLE) {
         require(_amount > 0, "Amount must be greater than 0");
         token.safeTransferFrom(msg.sender, address(this), _amount);
         emit Deposited(msg.sender, _amount);
@@ -54,7 +58,7 @@ contract BatchAirdrop is AccessControl  {
         totalAmount = _amount;
     }
     
-    function setDistribution(address[] calldata _recipients, uint256[] calldata _amounts) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setDistribution(address[] calldata _recipients, uint256[] calldata _amounts) external onlyRole(SET_DISTRIBUTION_ROLE) {
         uint _recipientLength = _recipients.length;
         require(_recipientLength == _amounts.length, "Arrays must have the same length");
         currentDistributionIndex = 0;
@@ -72,7 +76,7 @@ contract BatchAirdrop is AccessControl  {
         batchSize = _size;
     }
 
-    function distribute() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function distribute() external onlyRole(DISTRIBUTE_ROLE) {
         require(distributions.length > 0, "No distributions set");
         require(currentDistributionIndex < distributions.length, "All distributions completed");
 
