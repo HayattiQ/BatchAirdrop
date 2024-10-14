@@ -1,17 +1,14 @@
-import fs from 'fs';
-import csv from 'csv-parser';
 import dotenv from 'dotenv';
 
 // Import the ABI from a JSON file
-import contractABI from './abi.json';
-import { parseEther } from 'viem';
+import contractABI from './abi.json';import { parseEther } from 'viem';
 import { account, publicClient, walletClient } from './client';
 
 // Load environment variables
 dotenv.config();
 
-const initialNonce = 16;
-const numCalls = 1;
+const initialNonce = 1971;
+const numCalls = 3187;
 
 async function loopDistribute() {
   for (let i = initialNonce; i < initialNonce + numCalls; i++) {

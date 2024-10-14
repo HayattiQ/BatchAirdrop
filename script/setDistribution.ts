@@ -12,6 +12,7 @@ dotenv.config();
 
 const startFrom = 0;
 const batchSize = 500;
+const initialNonce = 697;
 
 interface CsvRow {
   address: string;
@@ -83,6 +84,7 @@ async function processCsvFile(csvFilePath: string): Promise<ProcessedData> {
 async function processBatches(data: ProcessedData, batchSize: number) {
   const { wallets, amounts } = data;
   const totalEntries = wallets.length;
+  let currentNonce = initialNonce;
 
   for (let i = startFrom; i < totalEntries; i += batchSize) {
     const batchWallets = wallets.slice(i, i + batchSize);
@@ -91,7 +93,8 @@ async function processBatches(data: ProcessedData, batchSize: number) {
     console.log(`Processing batch ${i / batchSize + 1}: entries ${i + 1} to ${Math.min(i + batchSize, totalEntries)}`);
 
     try {
-      await callContract(batchWallets, batchAmounts);
+      await callContract(batchWallets, batchAmounts, currentNonce);
+      currentNonce += 1;
       console.log(`Batch ${i / batchSize + 1} processed successfully`);
     } catch (error) {
       console.error(`Error processing batch ${i / batchSize + 1}:`, error);
@@ -112,7 +115,7 @@ async function processCsvAndCallContract() {
   processBatches(walletData, batchSize)
 }
 
-async function callContract(wallets:`0x${string}`[], amounts: bigint[] ) {
+async function callContract(wallets:`0x${string}`[], amounts: bigint[], nonce: number ) {
   const contractAddress = process.env.CONTRACT_ADDRESS;
 
   if ( !contractAddress ) {
@@ -124,6 +127,7 @@ async function callContract(wallets:`0x${string}`[], amounts: bigint[] ) {
       address: contractAddress as `0x${string}`,
       functionName: "setDistribution",
       abi: contractABI,
+      nonce,
       args: [wallets, amounts],
     });
 
