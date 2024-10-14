@@ -1,69 +1,124 @@
 import fs from 'fs';
 import csv from 'csv-parser';
-import { createPublicClient, createWalletClient, http, parseEther } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { base } from 'viem/chains';
 import dotenv from 'dotenv';
 
 // Import the ABI from a JSON file
 import contractABI from './abi.json';
+import { parseEther } from 'viem';
+import { account, publicClient, walletClient } from './client';
 
 // Load environment variables
 dotenv.config();
+
+const startFrom = 0;
+const batchSize = 500;
 
 interface CsvRow {
   address: string;
   amount: string;
 }
 
-async function processCsvAndCallContract() {
-  // Retrieve environment variables
-  const baseRpcUrl = process.env.BASE_RPC_URL;
-  const contractAddress = process.env.CONTRACT_ADDRESS;
-  const privateKey = process.env.PRIVATE_KEY;
-  const csvFilePath = process.env.CSV_FILE_PATH;
+interface ProcessedData {
+  wallets: `0x${string}`[];
+  amounts: bigint[];
+  errors: Array<{ line: number; address: string; amount: string; error: string }>;
+}
 
-  if (!baseRpcUrl || !contractAddress || !privateKey || !csvFilePath) {
-    throw new Error('Missing environment variables. Please check your .env file.');
-  }
-
-  // Setup Viem clients for Base chain
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(baseRpcUrl)
-  });
-
-  const account = privateKeyToAccount(`0x${privateKey}`);
-
-  const walletClient = createWalletClient({
-    account,
-    chain: base,
-    transport: http(baseRpcUrl)
-  });
-
+async function processCsvFile(csvFilePath: string): Promise<ProcessedData> {
   const wallets: `0x${string}`[] = [];
   const amounts: bigint[] = [];
+  const errors: Array<{ line: number; address: string; amount: string; error: string }> = [];
+  let lineNumber = 0;
 
-  await new Promise<void>((resolve, reject) => {
+  return new Promise<ProcessedData>((resolve, reject) => {
     fs.createReadStream(csvFilePath)
       .pipe(csv())
       .on('data', (row: CsvRow) => {
-        console.log(row)
-        wallets.push(row.address as `0x${string}`);
-        const amountWei = parseEther(row.amount);
-        amounts.push(amountWei);
+        lineNumber++;
+        try {
+          if (!row.address || !row.amount) {
+            throw new Error('Missing address or amount');
+          }
+
+          if (!row.address.startsWith('0x') || row.address.length !== 42) {
+            throw new Error('Invalid Ethereum address format');
+          }
+
+          const cleanedAmount = row.amount.replace(/,/g, '');
+          if (!/^\d+(\.\d+)?$/.test(cleanedAmount)) {
+            throw new Error('Invalid amount format');
+          }
+
+          wallets.push(row.address as `0x${string}`);
+          const amountWei = parseEther(cleanedAmount);
+          amounts.push(amountWei);
+        } catch (error) {
+          errors.push({
+            line: lineNumber,
+            address: row.address,
+            amount: row.amount,
+            error: (error as Error).message
+          });
+          console.error(`Error processing line ${lineNumber}:`, {
+            address: row.address,
+            amount: row.amount,
+            error: (error as Error).message
+          });
+        }
       })
       .on('end', () => {
-        resolve();
+        console.log(`CSV processing completed. Processed ${lineNumber} lines.`);
+        if (errors.length > 0) {
+          console.error(`Encountered ${errors.length} errors during processing.`);
+        }
+        resolve({ wallets, amounts, errors });
       })
       .on('error', (error) => {
+        console.error('Error reading CSV file:', error);
         reject(error);
       });
   });
+}
 
-  // Call the contract function
-  try {
-    // @ts-ignore
+async function processBatches(data: ProcessedData, batchSize: number) {
+  const { wallets, amounts } = data;
+  const totalEntries = wallets.length;
+
+  for (let i = startFrom; i < totalEntries; i += batchSize) {
+    const batchWallets = wallets.slice(i, i + batchSize);
+    const batchAmounts = amounts.slice(i, i + batchSize);
+
+    console.log(`Processing batch ${i / batchSize + 1}: entries ${i + 1} to ${Math.min(i + batchSize, totalEntries)}`);
+
+    try {
+      await callContract(batchWallets, batchAmounts);
+      console.log(`Batch ${i / batchSize + 1} processed successfully`);
+    } catch (error) {
+      console.error(`Error processing batch ${i / batchSize + 1}:`, error);
+      break; // 処理を中断する場合
+    }
+
+  }
+}
+
+
+async function processCsvAndCallContract() {
+  const csvFilePath = process.env.CSV_FILE_PATH;
+  if ( !csvFilePath) {
+    throw new Error('Missing environment variables. Please check your .env file.');
+  }
+
+  const walletData = await processCsvFile(csvFilePath)
+  processBatches(walletData, batchSize)
+}
+
+async function callContract(wallets:`0x${string}`[], amounts: bigint[] ) {
+  const contractAddress = process.env.CONTRACT_ADDRESS;
+
+  if ( !contractAddress ) {
+    throw new Error('Missing environment variables. Please check your .env file.');
+  }
+
     const {request} = await publicClient.simulateContract({
       account,
       address: contractAddress as `0x${string}`,
@@ -72,20 +127,14 @@ async function processCsvAndCallContract() {
       args: [wallets, amounts],
     });
 
-    // @ts-ignore
     const hash = await walletClient.writeContract(request)
 
     console.log('Transaction sent:', hash);
 
-    // @ts-ignore
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
     console.log('Transaction successful:', receipt.transactionHash);
 
-
-  } catch (error) {
-    console.error('Error calling contract:', error);
-  }
 }
 
 // Execute the function
