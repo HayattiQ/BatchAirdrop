@@ -3,15 +3,17 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract BatchAirdrop is Ownable(msg.sender) {
+contract BatchAirdrop is AccessControl  {
     using SafeERC20 for IERC20;
 
     IERC20 public token;
     uint256 public batchSize = 120;
     uint public totalAmount = 0;
+    bytes32 public constant DEPOSITER_ROLE = keccak256("DEPOSITER_ROLE");
+
 
     struct Distribution {
         address recipient;
@@ -27,29 +29,32 @@ contract BatchAirdrop is Ownable(msg.sender) {
 
     constructor(address _token) {
         token = IERC20(_token);
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(DEPOSITER_ROLE, _msgSender());
+        _grantRole(DEPOSITER_ROLE, _msgSender());
     }
 
-    function changeToken(address _token) external onlyOwner {
+    function changeToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         token = IERC20(_token);
     }
 
-    function deposit(uint256 _amount) external onlyOwner {
+    function deposit(uint256 _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_amount > 0, "Amount must be greater than 0");
         token.safeTransferFrom(msg.sender, address(this), _amount);
         emit Deposited(msg.sender, _amount);
     }
 
-    function resetDistribution() external onlyOwner {
+    function resetDistribution() external onlyRole(DEFAULT_ADMIN_ROLE) {
         delete distributions;
         currentDistributionIndex = 0;
         totalAmount = 0;
     }
 
-    function setTotalAmount(uint _amount) external onlyOwner {
+    function setTotalAmount(uint _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         totalAmount = _amount;
     }
     
-    function setDistribution(address[] calldata _recipients, uint256[] calldata _amounts) external onlyOwner {
+    function setDistribution(address[] calldata _recipients, uint256[] calldata _amounts) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint _recipientLength = _recipients.length;
         require(_recipientLength == _amounts.length, "Arrays must have the same length");
         currentDistributionIndex = 0;
@@ -63,11 +68,11 @@ contract BatchAirdrop is Ownable(msg.sender) {
         emit DistributionSet(_recipientLength, totalAmount);
     }
 
-    function setBatchSize(uint _size) external onlyOwner {
+    function setBatchSize(uint _size) external onlyRole(DEFAULT_ADMIN_ROLE) {
         batchSize = _size;
     }
 
-    function distribute() external onlyOwner {
+    function distribute() external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(distributions.length > 0, "No distributions set");
         require(currentDistributionIndex < distributions.length, "All distributions completed");
 
@@ -96,7 +101,7 @@ contract BatchAirdrop is Ownable(msg.sender) {
         IERC20 _token,
         uint256 _amount,
         address _to
-    ) external onlyOwner {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_to != address(0), "Cant be zero address");
         if (address(_token) == address(0)) {
             (bool success, ) = payable(_to).call{value: _amount}('');
