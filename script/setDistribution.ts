@@ -12,7 +12,7 @@ dotenv.config();
 
 const startFrom = 0;
 const batchSize = 500;
-const initialNonce = 697;
+const initialNonce = 3356;
 
 interface CsvRow {
   address: string;
@@ -45,7 +45,7 @@ async function processCsvFile(csvFilePath: string): Promise<ProcessedData> {
             throw new Error('Invalid Ethereum address format');
           }
 
-          const cleanedAmount = row.amount.replace(/,/g, '');
+          const cleanedAmount = row.amount.replace(/\,/g,"").replace(".00","");
           if (!/^\d+(\.\d+)?$/.test(cleanedAmount)) {
             throw new Error('Invalid amount format');
           }

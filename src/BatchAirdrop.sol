@@ -10,6 +10,7 @@ contract BatchAirdrop is AccessControl  {
     using SafeERC20 for IERC20;
 
     IERC20 public token;
+    string public immutable VERSION;
     uint256 public batchSize = 120;
     uint public totalAmount = 0;
     bytes32 public constant DEPOSITER_ROLE = keccak256("DEPOSITER_ROLE");
@@ -29,12 +30,13 @@ contract BatchAirdrop is AccessControl  {
     event DistributionSet(uint256 totalRecipients, uint256 totalAmount);
     event Distributed(uint256 batchSize, uint256 totalAmount);
 
-    constructor(address _token) {
+    constructor(address _token, string _version) {
         token = IERC20(_token);
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(DEPOSITER_ROLE, _msgSender());
         _grantRole(DISTRIBUTE_ROLE, _msgSender());
         _grantRole(SET_DISTRIBUTION_ROLE, _msgSender());
+        VERSION = _version;
 
     }
 
@@ -48,16 +50,6 @@ contract BatchAirdrop is AccessControl  {
         emit Deposited(msg.sender, _amount);
     }
 
-    function resetDistribution() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete distributions;
-        currentDistributionIndex = 0;
-        totalAmount = 0;
-    }
-
-    function setTotalAmount(uint _amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        totalAmount = _amount;
-    }
-    
     function setDistribution(address[] calldata _recipients, uint256[] calldata _amounts) external onlyRole(SET_DISTRIBUTION_ROLE) {
         uint _recipientLength = _recipients.length;
         require(_recipientLength == _amounts.length, "Arrays must have the same length");

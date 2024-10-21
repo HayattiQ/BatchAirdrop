@@ -8,7 +8,7 @@ import { account, publicClient, walletClient } from './client';
 dotenv.config();
 
 const initialNonce = 1971;
-const numCalls = 3187;
+const numCalls = 338;
 
 async function loopDistribute() {
   for (let i = initialNonce; i < initialNonce + numCalls; i++) {
@@ -32,7 +32,6 @@ async function callContract(nonce: number) {
       account,
       address: contractAddress as `0x${string}`,
       functionName: "distribute",
-      nonce,
       abi: contractABI
     });
 
