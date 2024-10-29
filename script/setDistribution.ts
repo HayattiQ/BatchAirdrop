@@ -127,7 +127,6 @@ async function callContract(wallets:`0x${string}`[], amounts: bigint[], nonce: n
       address: contractAddress as `0x${string}`,
       functionName: "setDistribution",
       abi: contractABI,
-      nonce,
       args: [wallets, amounts],
     });
 

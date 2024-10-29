@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-const baseRpcUrl = process.env.BASE_RPC_URL;
+const baseRpcUrl = process.env.RPC_URL;
 const privateKey = process.env.PRIVATE_KEY;
 
 if (!baseRpcUrl  || !privateKey ) {

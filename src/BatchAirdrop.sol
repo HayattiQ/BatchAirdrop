@@ -10,7 +10,7 @@ contract BatchAirdrop is AccessControl  {
     using SafeERC20 for IERC20;
 
     IERC20 public token;
-    string public immutable VERSION;
+    string public VERSION;
     uint256 public batchSize = 120;
     uint public totalAmount = 0;
     bytes32 public constant DEPOSITER_ROLE = keccak256("DEPOSITER_ROLE");
@@ -30,7 +30,7 @@ contract BatchAirdrop is AccessControl  {
     event DistributionSet(uint256 totalRecipients, uint256 totalAmount);
     event Distributed(uint256 batchSize, uint256 totalAmount);
 
-    constructor(address _token, string _version) {
+    constructor(address _token, string memory _version) {
         token = IERC20(_token);
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(DEPOSITER_ROLE, _msgSender());
