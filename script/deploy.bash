@@ -1,8 +1,4 @@
 #!/bin/bash
-
-# envファイルを読み込む
-source .env
-
 forge create src/BatchAirdrop.sol:BatchAirdrop --private-key $PRIVATE_KEY \
   --rpc-url $RPC_URL \
   --etherscan-api-key $ETHERSCAN_API_KEY \
